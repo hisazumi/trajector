@@ -1,0 +1,24 @@
+detector:
+  model_path: "yolov8n.pt"  # YOLOモデルパス
+  device: "cpu"  # "cuda" or "cpu"
+  confidence_threshold: 0.5
+  target_classes:  # 検出対象クラス（COCOデータセット）
+    - 0   # person
+    # 魚のクラスIDは通常のYOLOモデルには含まれていないため、
+    # 魚検出用の専用モデルが必要です
+
+tracker:
+  max_disappeared: 30  # フレーム数
+  max_distance: 50  # ピクセル
+
+visualizer:
+  trajectory_length: 50  # 表示する軌跡の長さ（フレーム数）
+  trajectory_color: [0, 255, 0]  # BGR
+  trajectory_thickness: 2
+  show_bbox: true
+  show_id: true
+  show_trajectory: true
+
+output:
+  fps: 30
+  codec: "mp4v"
