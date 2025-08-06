@@ -22,7 +22,7 @@ YOLOv8とOpenCVを使用したリアルタイム物体追跡・軌跡可視化�
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/yourusername/trajector.git
+git clone https://github.com/hisazumi/trajector.git
 cd trajector
 
 # uvを使用して依存関係をインストール

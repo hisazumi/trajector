@@ -22,7 +22,7 @@ Real-time object tracking and trajectory visualization system using YOLOv8 and O
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/trajector.git
+git clone https://github.com/hisazumi/trajector.git
 cd trajector
 
 # Install dependencies using uv
