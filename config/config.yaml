@@ -18,6 +18,10 @@ visualizer:
   show_bbox: true
   show_id: true
   show_trajectory: true
+  # 動的ヒートマップ設定
+  show_heatmap: false  # 起動時にヒートマップを表示するか
+  heatmap_alpha: 0.6  # ヒートマップの透明度 (0.0-1.0)
+  heatmap_update_interval: 10  # ヒートマップ更新間隔（フレーム数）
 
 output:
   fps: 30

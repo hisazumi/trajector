@@ -44,11 +44,13 @@ class TestTrackingPipeline:
         test_frame = np.zeros((480, 640, 3), dtype=np.uint8)
         test_detections = [{'bbox': np.array([100, 100, 200, 200])}]
         test_tracked = [{'id': 1, 'bbox': np.array([100, 100, 200, 200])}]
+        test_trajectories = {1: [(150, 150), (160, 160)]}
         vis_frame = np.ones((480, 640, 3), dtype=np.uint8)
         
         # Setup mocks
         self.mock_detector.detect.return_value = test_detections
         self.mock_tracker.update.return_value = test_tracked
+        self.mock_tracker.get_all_trajectories.return_value = test_trajectories
         self.mock_visualizer.draw_frame.return_value = vis_frame
         
         # Process frame
@@ -57,7 +59,9 @@ class TestTrackingPipeline:
         # Verify calls
         self.mock_detector.detect.assert_called_once_with(test_frame)
         self.mock_tracker.update.assert_called_once_with(test_detections, (480, 640))
-        self.mock_visualizer.draw_frame.assert_called_once_with(test_frame, test_tracked)
+        self.mock_tracker.get_all_trajectories.assert_called_once()
+        # Updated to match new draw_frame signature with trajectories
+        self.mock_visualizer.draw_frame.assert_called_once_with(test_frame, test_tracked, test_trajectories)
         
         # Check result
         assert 'frame' in result

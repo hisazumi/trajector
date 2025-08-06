@@ -58,8 +58,9 @@ class TrackingPipeline:
         frame_shape = (frame.shape[0], frame.shape[1])
         tracked_objects = self.tracker.update(detections, frame_shape)
         
-        # Visualize
-        vis_frame = self.visualizer.draw_frame(frame, tracked_objects)
+        # Visualize (pass trajectories for dynamic heatmap)
+        all_trajectories = self.tracker.get_all_trajectories()
+        vis_frame = self.visualizer.draw_frame(frame, tracked_objects, all_trajectories)
         
         # Apply custom processors
         for processor in self.frame_processors:

@@ -11,7 +11,10 @@ class TrajectoryVisualizer:
                  trajectory_thickness: int = 2,
                  show_bbox: bool = True,
                  show_id: bool = True,
-                 show_trajectory: bool = True):
+                 show_trajectory: bool = True,
+                 show_heatmap: bool = False,
+                 heatmap_alpha: float = 0.6,
+                 heatmap_update_interval: int = 10):
         
         self.trajectory_length = trajectory_length
         self.trajectory_color = trajectory_color
@@ -19,9 +22,16 @@ class TrajectoryVisualizer:
         self.show_bbox = show_bbox
         self.show_id = show_id
         self.show_trajectory = show_trajectory
+        self.show_heatmap = show_heatmap
+        self.heatmap_alpha = heatmap_alpha
+        self.heatmap_update_interval = heatmap_update_interval
         
         # Color palette for different objects
         self.colors = self._generate_colors(100)
+        
+        # Heatmap cache
+        self._heatmap_cache = None
+        self._frame_count = 0
         
     def _generate_colors(self, n: int) -> List[Tuple[int, int, int]]:
         colors = []
@@ -31,8 +41,29 @@ class TrajectoryVisualizer:
             colors.append(tuple(int(c) for c in color))
         return colors
     
-    def draw_frame(self, frame: np.ndarray, tracked_objects: List[Dict]) -> np.ndarray:
+    def draw_frame(self, frame: np.ndarray, tracked_objects: List[Dict], 
+                  all_trajectories: Optional[Dict[int, List[Tuple[int, int]]]] = None) -> np.ndarray:
         vis_frame = frame.copy()
+        
+        # Draw dynamic heatmap overlay if enabled
+        if self.show_heatmap and all_trajectories:
+            self._frame_count += 1
+            
+            # Update heatmap cache periodically or if cache is empty
+            if (self._heatmap_cache is None or 
+                self._frame_count % self.heatmap_update_interval == 0):
+                self._heatmap_cache = self.create_heatmap(frame.shape[:2], all_trajectories)
+            
+            # Overlay heatmap on frame
+            if self._heatmap_cache is not None:
+                # Resize heatmap to match frame if needed
+                if self._heatmap_cache.shape[:2] != frame.shape[:2]:
+                    self._heatmap_cache = cv2.resize(self._heatmap_cache, 
+                                                   (frame.shape[1], frame.shape[0]))
+                
+                # Blend heatmap with frame
+                vis_frame = cv2.addWeighted(vis_frame, 1 - self.heatmap_alpha, 
+                                          self._heatmap_cache, self.heatmap_alpha, 0)
         
         for obj in tracked_objects:
             obj_id = obj['id']
@@ -91,5 +122,66 @@ class TrajectoryVisualizer:
         heatmap = (heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8)
         heatmap = (heatmap * 255).astype(np.uint8)
         heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        
+        return heatmap_colored
+    
+    def toggle_heatmap(self):
+        """Toggle heatmap display on/off."""
+        self.show_heatmap = not self.show_heatmap
+        if not self.show_heatmap:
+            self._heatmap_cache = None
+    
+    def set_heatmap_alpha(self, alpha: float):
+        """Set heatmap transparency (0.0 = transparent, 1.0 = opaque)."""
+        self.heatmap_alpha = max(0.0, min(1.0, alpha))
+    
+    def reset_heatmap_cache(self):
+        """Reset heatmap cache to force regeneration."""
+        self._heatmap_cache = None
+        self._frame_count = 0
+    
+    def create_realtime_heatmap(self, frame_shape: Tuple[int, int], 
+                               current_trajectories: Dict[int, List[Tuple[int, int]]],
+                               decay_factor: float = 0.95) -> np.ndarray:
+        """Create a real-time updating heatmap with decay."""
+        current_heatmap = np.zeros((frame_shape[0], frame_shape[1]), dtype=np.float32)
+        
+        # Add current trajectory points
+        for track_id, trajectory in current_trajectories.items():
+            if len(trajectory) > 0:
+                # Weight recent points more heavily
+                for i, point in enumerate(trajectory):
+                    x, y = point
+                    if 0 <= x < frame_shape[1] and 0 <= y < frame_shape[0]:
+                        # More recent points get higher weight
+                        weight = (i + 1) / len(trajectory)
+                        cv2.circle(current_heatmap, (x, y), 15, weight, -1)
+        
+        # Apply decay to existing heatmap and add new data
+        if self._heatmap_cache is not None:
+            # Ensure cache is same size as current heatmap
+            if self._heatmap_cache.shape[:2] != current_heatmap.shape:
+                self._heatmap_cache = cv2.resize(self._heatmap_cache, 
+                                               (current_heatmap.shape[1], current_heatmap.shape[0]))
+                # Convert back to grayscale if it was colorized
+                if len(self._heatmap_cache.shape) == 3:
+                    self._heatmap_cache = cv2.cvtColor(self._heatmap_cache, cv2.COLOR_BGR2GRAY)
+                    self._heatmap_cache = self._heatmap_cache.astype(np.float32) / 255.0
+            
+            # Apply decay and combine
+            decayed_cache = self._heatmap_cache.astype(np.float32) * decay_factor
+            current_heatmap = decayed_cache + current_heatmap
+        
+        # Blur and normalize
+        current_heatmap = cv2.GaussianBlur(current_heatmap, (21, 21), 0)
+        if current_heatmap.max() > 0:
+            current_heatmap = current_heatmap / current_heatmap.max()
+        
+        # Store as cache for next frame
+        self._heatmap_cache = current_heatmap.copy()
+        
+        # Convert to color image
+        heatmap_uint8 = (current_heatmap * 255).astype(np.uint8)
+        heatmap_colored = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
         
         return heatmap_colored

@@ -36,7 +36,10 @@ def create_pipeline(config: dict) -> TrackingPipeline:
         trajectory_thickness=config['visualizer']['trajectory_thickness'],
         show_bbox=config['visualizer']['show_bbox'],
         show_id=config['visualizer']['show_id'],
-        show_trajectory=config['visualizer']['show_trajectory']
+        show_trajectory=config['visualizer']['show_trajectory'],
+        show_heatmap=config['visualizer'].get('show_heatmap', False),
+        heatmap_alpha=config['visualizer'].get('heatmap_alpha', 0.6),
+        heatmap_update_interval=config['visualizer'].get('heatmap_update_interval', 10)
     )
     
     return TrackingPipeline(detector, tracker, visualizer)
@@ -118,6 +121,8 @@ def process_webcam(args):
     print("  s: Save screenshot")
     print("  h: Save heatmap")
     print("  r: Reset tracking")
+    print("  t: Toggle dynamic heatmap overlay")
+    print("  +/-: Increase/decrease heatmap opacity")
     if args.save:
         print("  Recording enabled")
     
@@ -188,7 +193,25 @@ def process_webcam(args):
                         max_disappeared=config['tracker']['max_disappeared'],
                         max_distance=config['tracker']['max_distance']
                     )
+                    pipeline.visualizer.reset_heatmap_cache()
                     print("Tracking reset")
+                elif key == ord('t'):
+                    # Toggle dynamic heatmap
+                    pipeline.visualizer.toggle_heatmap()
+                    status = "ON" if pipeline.visualizer.show_heatmap else "OFF"
+                    print(f"Dynamic heatmap: {status}")
+                elif key == ord('+') or key == ord('='):
+                    # Increase heatmap opacity
+                    current_alpha = pipeline.visualizer.heatmap_alpha
+                    new_alpha = min(1.0, current_alpha + 0.1)
+                    pipeline.visualizer.set_heatmap_alpha(new_alpha)
+                    print(f"Heatmap opacity: {new_alpha:.1f}")
+                elif key == ord('-'):
+                    # Decrease heatmap opacity
+                    current_alpha = pipeline.visualizer.heatmap_alpha
+                    new_alpha = max(0.0, current_alpha - 0.1)
+                    pipeline.visualizer.set_heatmap_alpha(new_alpha)
+                    print(f"Heatmap opacity: {new_alpha:.1f}")
                 
                 frame_count += 1
                 
