@@ -9,9 +9,9 @@ from datetime import datetime
 import io
 from PIL import Image
 
-from .sources import VideoFileSource, WebcamSource
-from .core import YOLODetector, ObjectTracker, TrajectoryVisualizer
-from .processors import TrackingPipeline
+from src.sources import VideoFileSource, WebcamSource
+from src.core import YOLODetector, ObjectTracker, TrajectoryVisualizer
+from src.processors import TrackingPipeline
 
 
 def load_config():
